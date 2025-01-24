@@ -1,24 +1,25 @@
-# Homebridge TP-Link Tapo
+# Homebridge Tapo (TP-Link) Smart Home
 
-## This plugin has been archived and it will no longer receive updates
+[![Build and Lint](https://github.com/kevinhillinger/homebridge-tapo-smarthome/actions/workflows/build.yml/badge.svg)](https://github.com/kevinhillinger/homebridge-tapo-smarthome/actions/workflows/build.yml)
+[![CodeQL](https://github.com/kevinhillinger/homebridge-tapo-smarthome/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/kevinhillinger/homebridge-tapo-smarthome/actions/workflows/codeql-analysis.yml)
 
-[![Build and Lint](https://github.com/RaresAil/homebridge-tp-link-tapo/actions/workflows/build.yml/badge.svg)](https://github.com/RaresAil/homebridge-tp-link-tapo/actions/workflows/build.yml)
-[![CodeQL](https://github.com/RaresAil/homebridge-tp-link-tapo/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/RaresAil/homebridge-tp-link-tapo/actions/workflows/codeql-analysis.yml)
+![Snyk Vulnerabilities for npm package](https://img.shields.io/snyk/vulnerabilities/npm/homebridge-tapo-smarthome)
+![npm](https://img.shields.io/npm/dm/homebridge-tapo-smarthome)
 
-[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-![Snyk Vulnerabilities for npm package](https://img.shields.io/snyk/vulnerabilities/npm/homebridge-tp-link-tapo)
-![npm](https://img.shields.io/npm/dm/homebridge-tp-link-tapo)
+Tapo Smart Home Plugin for [Homebridge](https://github.com/homebridge/homebridge).
 
-I recommend to use the platform as a Child Bridge for the best performance.
+This is a fork of the archived plugin [`homebridge-tp-link-tapo`](https://github.com/RaresAil/homebridge-tp-link-tapo) originally authored by 
+[Nicolae Rares Ailincai](https://github.com/RaresAil).
 
-Most of the time the response time between the app and the device is 80ms.
-With the official app i measured around 1s to 2s as a response time.
 
-### Migrate to V3
+|  |  |
+|---------|-------------|
+| Platform Name | `HomebridgeTapoSmartHome` |
+| | |
 
-The platform name was changed to `HomebridgeTPLinkTapo` from HomebridgeTPLinkLights
+## Installation 
 
-Package was renamed from `homebridge-tplink-smart-light` to `homebridge-tp-link-tapo`
+> CHILD BRIDGE: While not required, install this plugin as a Child Bridge for the best performance. Most of the time the response time between the app and the device is 80ms. With the official app, response times were 1-2 seconds.
 
 ### Current device types
 
@@ -39,12 +40,24 @@ You can add multiple devices bulbs with a single platform.
 {
   "platforms": [
     {
-      "platform": "HomebridgeTPLinkTapo",
-      "name": "TPLink Tapo Platform",
-      "email": "tplink-email",
-      "password": "tplink-password",
-      "addresses": ["192.168.x.x (the ip address of the device)"]
+      "platform": "HomebridgeTapo",
+      "name": "Tapo Smart Home",
+      "email": "tplink-account-email",
+      "password": "tplink-account-password",
+      "devices": [
+        { 
+          "address": "24-2F-D1-9C-00-42 (the MAC address of the device)",
+          "name": "name of the device"
+        },
+        { ... }
+      ]
     }
   ]
 }
 ```
+
+## Credits
+
+- [Kevin Hillinger](https://github.com/RaresAil) - plugin maintainer
+
+- [Nicolae Rares Ailincai](https://github.com/RaresAil) - original author of the [`homebridge-tp-link-tapo`](https://github.com/RaresAil/homebridge-tp-link-tapo) plugin, which this plugin is forked from (*He is not affiliated nor contributes to this plugin*)
