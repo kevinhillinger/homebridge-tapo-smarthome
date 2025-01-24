@@ -2,7 +2,7 @@ import { PlatformAccessory, Logger } from 'homebridge';
 
 import { ChildInfo } from '../../api/@types/ChildListInfo';
 import HubAccessory, { HubContext } from '../Hub';
-import Accessory from '../../@types/Accessory';
+import TapoAccessory from '../../@types/TapoAccessory';
 import Context from '../../@types/Context';
 import Platform from '../../platform';
 import delay from '../../utils/delay';
@@ -14,7 +14,7 @@ export type AccessoryThisType = ThisType<{
   readonly getInfo: () => Promise<ChildInfo>;
 }>;
 
-export default class ButtonAccessory extends Accessory {
+export default class ButtonAccessory extends TapoAccessory {
   private interval?: NodeJS.Timeout;
   private lastEventUpdate = 0;
 

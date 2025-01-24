@@ -4,7 +4,7 @@ import InUse from './characteristics/InUse';
 import On from './characteristics/On';
 
 import DeviceInfo from '../../api/@types/DeviceInfo';
-import Accessory from '../../@types/Accessory';
+import TapoAccessory from '../../@types/TapoAccessory';
 import Context from '../../@types/Context';
 import TPLink from '../../api/TPLink';
 import Platform from '../../platform';
@@ -15,7 +15,7 @@ export type AccessoryThisType = ThisType<{
   readonly mac: string;
 }>;
 
-export default class LightBulbAccessory extends Accessory {
+export default class LightBulbAccessory extends TapoAccessory {
   private readonly service: Service;
 
   public get UUID() {

@@ -8,7 +8,7 @@ import On from './characteristics/On';
 
 import { HOME_KIT_VALUES } from '../../utils/translateColorTemp';
 import DeviceInfo from '../../api/@types/DeviceInfo';
-import Accessory from '../../@types/Accessory';
+import TapoAccessory from '../../@types/TapoAccessory';
 import Context from '../../@types/Context';
 import TPLink from '../../api/TPLink';
 import Platform from '../../platform';
@@ -22,7 +22,7 @@ export type AccessoryThisType = ThisType<{
   hue: number;
 }>;
 
-export default class LightBulbAccessory extends Accessory {
+export default class LightBulbAccessory extends TapoAccessory {
   private readonly powerChar: Characteristic;
   private readonly service: Service;
 

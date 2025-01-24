@@ -20,7 +20,7 @@ export enum ChildType {
   MotionSensor = 'MotionSensor'
 }
 
-abstract class Accessory {
+abstract class TapoAccessory {
   protected readonly tpLink: TPLink;
   protected readonly model: string;
   protected readonly mac: string;
@@ -73,4 +73,4 @@ abstract class Accessory {
   }
 }
 
-export default Accessory;
+export default TapoAccessory;

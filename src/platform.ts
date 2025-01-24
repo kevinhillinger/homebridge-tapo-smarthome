@@ -8,7 +8,7 @@ import {
   Characteristic
 } from 'homebridge';
 
-import Accessory, { AccessoryType, ChildType } from './@types/Accessory';
+import TapoAccessory, { AccessoryType, ChildType } from './@types/TapoAccessory';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import DeviceInfo from './api/@types/DeviceInfo';
 import Context from './@types/Context';
@@ -35,7 +35,7 @@ export default class Platform implements DynamicPlatformPlugin {
 
   public readonly accessories: PlatformAccessory<Context | HubContext>[] = [];
   public readonly loadedChildUUIDs: Record<string, true> = {};
-  public readonly registeredDevices: Accessory[] = [];
+  public readonly registeredDevices: TapoAccessory[] = [];
   public readonly hubs: HubAccessory[] = [];
   
   private readonly deviceRetry: { [key: string]: number; } = {};
@@ -174,7 +174,7 @@ export default class Platform implements DynamicPlatformPlugin {
           this.log.error(
             'Failed to register accessory "%s" of type "%s" (%s)',
             deviceName,
-            Accessory.GetType(deviceInfo),
+            TapoAccessory.GetType(deviceInfo),
             deviceInfo?.type
           );
           return;
@@ -200,7 +200,7 @@ export default class Platform implements DynamicPlatformPlugin {
         this.log.error(
           'Failed to register accessory "%s" of type "%s" (%s)',
           deviceName,
-          Accessory.GetType(deviceInfo),
+          TapoAccessory.GetType(deviceInfo),
           deviceInfo?.type
         );
         return;
@@ -271,7 +271,7 @@ export default class Platform implements DynamicPlatformPlugin {
           this.log.error(
             'Failed to register child accessory "%s" of type "%s" (%s)',
             deviceName,
-            Accessory.GetChildType(deviceInfo),
+            TapoAccessory.GetChildType(deviceInfo),
             deviceInfo?.type
           );
           return;
@@ -301,7 +301,7 @@ export default class Platform implements DynamicPlatformPlugin {
         this.log.error(
           'Failed to register child accessory "%s" of type "%s" (%s)',
           deviceName,
-          Accessory.GetChildType(deviceInfo),
+          TapoAccessory.GetChildType(deviceInfo),
           deviceInfo?.type
         );
         return;
@@ -358,8 +358,8 @@ export default class Platform implements DynamicPlatformPlugin {
   private registerAccessory(
     accessory: PlatformAccessory<Context | HubContext>,
     deviceInfo: DeviceInfo
-  ): Accessory | null {
-    const AccessoryClass = this.accessoryClasses[Accessory.GetType(deviceInfo)];
+  ): TapoAccessory | null {
+    const AccessoryClass = this.accessoryClasses[TapoAccessory.GetType(deviceInfo)];
     if (!AccessoryClass) {
       return null;
     }
@@ -383,8 +383,8 @@ export default class Platform implements DynamicPlatformPlugin {
     accessory: PlatformAccessory<Context | HubContext>,
     deviceInfo: ChildInfo,
     parent: HubAccessory
-  ): Accessory | null {
-    const ChildClass = this.childClasses[Accessory.GetChildType(deviceInfo)];
+  ): TapoAccessory | null {
+    const ChildClass = this.childClasses[TapoAccessory.GetChildType(deviceInfo)];
     if (!ChildClass) {
       return null;
     }

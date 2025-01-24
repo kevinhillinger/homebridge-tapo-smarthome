@@ -5,7 +5,7 @@ import {
 } from 'homebridge';
 
 import DeviceInfo from '../../api/@types/DeviceInfo';
-import Accessory from '../../@types/Accessory';
+import TapoAccessory from '../../@types/TapoAccessory';
 import Context from '../../@types/Context';
 import TPLink from '../../api/TPLink';
 import Platform from '../../platform';
@@ -28,7 +28,7 @@ export interface HubContext {
   parent: string;
 }
 
-export default class HubAccessory extends Accessory {
+export default class HubAccessory extends TapoAccessory {
   private readonly Characteristic = this.platform.Characteristic;
 
   private readonly currentChar: CharInstance;
