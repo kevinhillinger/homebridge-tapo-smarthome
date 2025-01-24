@@ -22,6 +22,9 @@ import { ChildInfo } from './api/@types/ChildListInfo';
 import ButtonAccessory from './accessories/Button';
 import ContactAccessory from './accessories/Contact';
 import MotionSensorAccessory from './accessories/MotionSensor';
+import NetworkDeviceLocator from './network/network-device-locator';
+import { NetworkDeviceAddress } from './@types/NetworkDeviceAddress';
+import { NetworkAddressValidator } from './network/network-address-validator';
 
 export default class Platform implements DynamicPlatformPlugin {
   private readonly TIMEOUT_TRIES = 20;
@@ -34,15 +37,19 @@ export default class Platform implements DynamicPlatformPlugin {
   public readonly loadedChildUUIDs: Record<string, true> = {};
   public readonly registeredDevices: Accessory[] = [];
   public readonly hubs: HubAccessory[] = [];
-  private readonly deviceRetry: {
-    [key: string]: number;
-  } = {};
+  
+  private readonly deviceRetry: { [key: string]: number; } = {};
+
+  deviceLocator: NetworkDeviceLocator;
 
   constructor(
     public readonly log: Logger,
     public readonly config: PlatformConfig,
     public readonly api: API
   ) {
+
+    this.deviceLocator = new NetworkDeviceLocator(log);
+
     this.log.debug('Finished initializing platform:', this.config.name);
 
     this.api.on('didFinishLaunching', () => {
@@ -105,8 +112,15 @@ export default class Platform implements DynamicPlatformPlugin {
     }
   }
 
-  private async loadDevice(ip: string, email: string, password: string) {
+  private async loadDevice(address: NetworkDeviceAddress, email: string, password: string) {
+    const ip = address.type === 'IP' ? address.value : await this.deviceLocator.findIpByMac(address.value);
+
+    if (!ip) {
+      return;
+    }
+
     const uuid = this.api.hap.uuid.generate(ip);
+
     if (this.deviceRetry[uuid] === undefined) {
       this.deviceRetry[uuid] = this.TIMEOUT_TRIES;
     } else if (this.deviceRetry[uuid] <= 0) {
@@ -129,7 +143,7 @@ export default class Platform implements DynamicPlatformPlugin {
       if (Object.keys(deviceInfo || {}).length === 0) {
         this.log.error('Failed to get info about:', ip);
         this.deviceRetry[uuid] -= 1;
-        return await this.loadDevice(ip, email, password);
+        return await this.loadDevice(address, email, password);
       }
 
       const deviceName = Buffer.from(
@@ -198,9 +212,9 @@ export default class Platform implements DynamicPlatformPlugin {
         accessory
       ]);
     } catch (err: any) {
-      this.log.error('Failed to get info about:', ip, '|', err.message);
+      this.log.error('Failed to get info about:', address, '|', err.message);
       this.deviceRetry[uuid] -= 1;
-      return await this.loadDevice(ip, email, password);
+      return await this.loadDevice(address, email, password);
     }
   }
 
@@ -307,11 +321,11 @@ export default class Platform implements DynamicPlatformPlugin {
 
   private checkOldDevices() {
     const addressesByUUID: Record<string, string> = (
-      (this.config?.addresses as string[]) || []
+      (this.config?.addresses) || []
     ).reduce(
-      (acc, ip) => ({
+      (acc, address) => ({
         ...acc,
-        [this.api.hap.uuid.generate(ip)]: ip
+        [this.api.hap.uuid.generate(address.value)]: address.value
       }),
       {}
     );

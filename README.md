@@ -44,12 +44,11 @@ You can add multiple devices bulbs with a single platform.
       "name": "Tapo Smart Home",
       "email": "tplink-account-email",
       "password": "tplink-account-password",
-      "devices": [
-        { 
-          "address": "24-2F-D1-9C-00-42 (the MAC address of the device)",
-          "name": "name of the device"
-        },
-        { ... }
+      "addresses": [
+        {
+          "value": "24-2F-D1-9C-00-42 (the MAC address of the device)",
+          "type": "IP | MAC"
+        }
       ]
     }
   ]

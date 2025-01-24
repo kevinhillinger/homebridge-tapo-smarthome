@@ -1,6 +1,9 @@
 # Ignore compiled code
 dist
 
+# Test configuration
+test/hbConfig
+
 # ------------- Defaults ------------- #
 
 # Logs

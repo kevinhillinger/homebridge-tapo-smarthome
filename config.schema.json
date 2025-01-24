@@ -1,39 +1,38 @@
 {
-  "pluginAlias": "HomebridgeTPLinkTapo",
+  "pluginAlias": "HomebridgeTapoSmarthome",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
       "name": {
-        "title": "Name",
         "type": "string",
-        "required": true,
-        "description": "TPLink Tapo Platform"
+        "default": "Tapo Smart Home"
       },
       "email": {
-        "title": "Email",
         "type": "string",
-        "required": true,
-        "description": "TPLink's account email."
+        "format": "email"
       },
       "password": {
-        "title": "Password",
-        "type": "string",
-        "required": true,
-        "description": "TPLink's account password"
+        "type": "string"
       },
       "addresses": {
-        "title": "Addresses",
-        "required": true,
-        "uniqueItems": true,
         "type": "array",
-        "description": "A list of IPs for each device",
         "items": {
-          "title": "Ip Address",
-          "type": "string"
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["IP", "MAC"]
+            }
+          },
+          "required": ["value", "type"]
         }
       }
-    }
+    },
+    "required": ["platform", "name", "email", "password", "addresses"]
   }
 }
