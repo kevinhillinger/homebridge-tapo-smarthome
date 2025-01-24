@@ -40,7 +40,7 @@ You can add multiple devices bulbs with a single platform.
 {
   "platforms": [
     {
-      "platform": "HomebridgeTapo",
+      "platform": "HomebridgeTapoSmarthome",
       "name": "Tapo Smart Home",
       "email": "tplink-account-email",
       "password": "tplink-account-password",
