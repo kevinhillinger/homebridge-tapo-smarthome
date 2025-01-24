@@ -26,7 +26,11 @@
             },
             "type": {
               "type": "string",
-              "enum": ["IP", "MAC"]
+              "default": "MAC",
+              "oneOf": [
+                { "title": "IP Address", "enum": ["IP"], "description": "Set IP only if it's staticly assigned." },
+                { "title": "MAC Address", "enum": ["MAC"], "description": "MAC address is the default and will be used to find the Tapo device's IP Address." }
+              ]
             }
           },
           "required": ["value", "type"]
