@@ -8,7 +8,8 @@ import {
   Characteristic
 } from 'homebridge';
 
-import TapoAccessory, { AccessoryType, ChildType } from './@types/TapoAccessory';
+import TapoAccessory, { ChildType } from './@types/TapoAccessory';
+import { TapoAccessoryType } from './@types/TapoAccessoryType';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import DeviceInfo from './api/@types/DeviceInfo';
 import Context from './@types/Context';
@@ -23,21 +24,21 @@ import ButtonAccessory from './accessories/Button';
 import ContactAccessory from './accessories/Contact';
 import MotionSensorAccessory from './accessories/MotionSensor';
 import NetworkDeviceLocator from './network/network-device-locator';
-import { NetworkDeviceAddress } from './@types/NetworkDeviceAddress';
+import { NetworkAddressConfig } from './@types/network-address-config';
 import { NetworkAddressValidator } from './network/network-address-validator';
+import { TapoDevice } from './tapo/tapo-device';
 
 export default class Platform implements DynamicPlatformPlugin {
   private readonly TIMEOUT_TRIES = 20;
 
-  public readonly Service: typeof Service = this.api.hap.Service;
-  public readonly Characteristic: typeof Characteristic =
-    this.api.hap.Characteristic;
+  public readonly Service: typeof Service;
+  public readonly Characteristic: typeof Characteristic;
 
   public readonly accessories: PlatformAccessory<Context | HubContext>[] = [];
   public readonly loadedChildUUIDs: Record<string, true> = {};
   public readonly registeredDevices: TapoAccessory[] = [];
   public readonly hubs: HubAccessory[] = [];
-  
+
   private readonly deviceRetry: { [key: string]: number; } = {};
 
   deviceLocator: NetworkDeviceLocator;
@@ -48,16 +49,28 @@ export default class Platform implements DynamicPlatformPlugin {
     public readonly api: API
   ) {
 
-    this.deviceLocator = new NetworkDeviceLocator(log);
+    this.deviceLocator = new NetworkDeviceLocator(log, this.api.hap.uuid.generate);
+    this.Service = this.api.hap.Service;
+    this.Characteristic = this.api.hap.Characteristic;
+    
+    this.deviceLocator = new NetworkDeviceLocator(log, this.api.hap.uuid.generate);
 
-    this.log.debug('Finished initializing platform:', this.config.name);
-
+    // When this event is fired it means Homebridge has restored all cached accessories from disk.
+    // Dynamic Platform plugins should only register new accessories after this event was fired,
+    // in order to ensure they weren't added to homebridge already. This event can also be used
+    // to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
+      this.log.debug('Executed didFinishLaunching callback');
+      this.log.debug('Finished initializing platform:', this.config.name);
+
       this.discoverDevices();
     });
   }
 
+  /**
+   * REQUIRED - Homebridge will call the "configureAccessory" method once for every cached
+   * accessory restored
+   */
   configureAccessory(accessory: PlatformAccessory<Context>) {
     this.log.info('Loading accessory from cache:', accessory.displayName);
     this.accessories.push(accessory);
@@ -112,36 +125,39 @@ export default class Platform implements DynamicPlatformPlugin {
     }
   }
 
-  private async loadDevice(address: NetworkDeviceAddress, email: string, password: string) {
-    const ip = address.type === 'IP' ? address.value : await this.deviceLocator.findIpByMac(address.value);
+  private async loadDevice(address: NetworkAddressConfig, email: string, password: string) {
+    const networkDevice = await this.deviceLocator.find(address);
 
-    if (!ip) {
+    if (!networkDevice) {
       return;
     }
-
-    const uuid = this.api.hap.uuid.generate(ip);
+    const uuid = networkDevice.uuid;
 
     if (this.deviceRetry[uuid] === undefined) {
       this.deviceRetry[uuid] = this.TIMEOUT_TRIES;
     } else if (this.deviceRetry[uuid] <= 0) {
-      this.log.info('Retry timeout:', ip);
+      this.log.info('Retry timeout:', networkDevice.ip, '|', networkDevice.mac);
       return;
     } else {
-      this.log.info('Retry to connect in 10s', ':', ip);
+      this.log.info('Retry to connect in 10s', ':', networkDevice.ip);
       await delay(10 * 1000);
-      this.log.info(
-        'Try for',
-        ip,
-        ':',
-        `${this.deviceRetry[uuid]}/${this.TIMEOUT_TRIES}`
-      );
+
+      this.log.info('Try for', networkDevice.ip,':',`${this.deviceRetry[uuid]}/${this.TIMEOUT_TRIES}`);
     }
 
     try {
-      const tpLink = await new TPLink(ip, email, password, this.log).setup();
+      const tapoDevice = new TapoDevice(networkDevice, async (mac: string) => {
+        const device = await this.deviceLocator.findByMac(mac);
+        if (!device) {
+          throw new Error(`Device with MAC ${mac} not found`);
+        }
+        return device.ip;
+      }, this.log);
+
+      const tpLink = await new TPLink(tapoDevice, email, password, this.log).setup();
       const deviceInfo = await tpLink.getInfo();
       if (Object.keys(deviceInfo || {}).length === 0) {
-        this.log.error('Failed to get info about:', ip);
+        this.log.error('Failed to get info about:', networkDevice.ip);
         this.deviceRetry[uuid] -= 1;
         return await this.loadDevice(address, email, password);
       }
@@ -166,21 +182,19 @@ export default class Platform implements DynamicPlatformPlugin {
           child: false
         };
 
-        const registeredAccessory = this.registerAccessory(
-          existingAccessory,
-          deviceInfo
-        );
-        if (!registeredAccessory) {
+        const tapoAccessory = this.createTapoAccessory(existingAccessory, deviceInfo);
+
+        if (!tapoAccessory) {
           this.log.error(
             'Failed to register accessory "%s" of type "%s" (%s)',
             deviceName,
-            TapoAccessory.GetType(deviceInfo),
+            TapoAccessory.getType(deviceInfo),
             deviceInfo?.type
           );
           return;
         }
 
-        this.registeredDevices.push(registeredAccessory);
+        this.registeredDevices.push(tapoAccessory);
         return;
       }
 
@@ -195,12 +209,12 @@ export default class Platform implements DynamicPlatformPlugin {
         child: false
       };
 
-      const registeredAccessory = this.registerAccessory(accessory, deviceInfo);
+      const registeredAccessory = this.createTapoAccessory(accessory, deviceInfo);
       if (!registeredAccessory) {
         this.log.error(
           'Failed to register accessory "%s" of type "%s" (%s)',
           deviceName,
-          TapoAccessory.GetType(deviceInfo),
+          TapoAccessory.getType(deviceInfo),
           deviceInfo?.type
         );
         return;
@@ -350,27 +364,24 @@ export default class Platform implements DynamicPlatformPlugin {
   }
 
   private readonly accessoryClasses = {
-    [AccessoryType.LightBulb]: LightBulbAccessory,
-    [AccessoryType.Outlet]: OutletAccessory,
-    [AccessoryType.Hub]: HubAccessory
+    [TapoAccessoryType.LightBulb]: LightBulbAccessory,
+    [TapoAccessoryType.Outlet]: OutletAccessory,
+    [TapoAccessoryType.Hub]: HubAccessory
   };
 
-  private registerAccessory(
-    accessory: PlatformAccessory<Context | HubContext>,
-    deviceInfo: DeviceInfo
-  ): TapoAccessory | null {
-    const AccessoryClass = this.accessoryClasses[TapoAccessory.GetType(deviceInfo)];
-    if (!AccessoryClass) {
+  private createTapoAccessory(accessory: PlatformAccessory<Context | HubContext>, deviceInfo: DeviceInfo): TapoAccessory | null {
+    const AccessoryType = this.accessoryClasses[TapoAccessory.getType(deviceInfo)];
+    if (!AccessoryType) {
       return null;
     }
 
-    const acc = new AccessoryClass(this, accessory, this.log, deviceInfo);
+    const instance = new AccessoryType(this, accessory, this.log, deviceInfo);
 
-    if (acc instanceof HubAccessory) {
-      this.hubs.push(acc);
+    if (instance instanceof HubAccessory) {
+      this.hubs.push(instance);
     }
 
-    return acc;
+    return instance;
   }
 
   private readonly childClasses = {

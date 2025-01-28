@@ -46,7 +46,7 @@ export default class LegacyAPI extends API {
     setCookie = false
   ) {
     const response = await axios.post(
-      `http://${this.ip}/app`,
+      `http://${this.device}/app`,
       JSON.stringify({
         method,
         params,
@@ -89,7 +89,7 @@ export default class LegacyAPI extends API {
 
     try {
       const response = await axios.post(
-        `http://${this.ip}/app${useToken ? `?token=${this.loginToken!}` : ''}`,
+        `http://${this.device}/app${useToken ? `?token=${this.loginToken!}` : ''}`,
         JSON.stringify({
           method: 'securePassthrough',
           params: {

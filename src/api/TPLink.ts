@@ -8,6 +8,8 @@ import LegacyAPI from './LegacyAPI';
 import commands from './commands';
 import KlapAPI from './KlapAPI';
 import API from './@types/API';
+import { NetworkDevice } from '../@types/network-device';
+import { TapoDevice } from '../tapo/tapo-device';
 
 export interface HandshakeData {
   cookie?: string;
@@ -58,13 +60,13 @@ export default class TPLink {
   > = {};
 
   constructor(
-    private readonly ip: string,
+    private readonly device: TapoDevice,
     private readonly email: string,
     private readonly password: string,
     private readonly log: Logger
   ) {
     this.lock = new AsyncLock();
-    this.api = new LegacyAPI(ip, email, password, log);
+    this.api = new LegacyAPI(device, email, password, log);
   }
 
   public async setup(): Promise<TPLink> {
@@ -76,8 +78,9 @@ export default class TPLink {
       await this.api.setup();
 
       this._protocol = await this.checkProtocol();
+
       if (this._protocol === Protocol.KLAP) {
-        this.api = new KlapAPI(this.ip, this.email, this.password, this.log);
+        this.api = new KlapAPI(this.device, this.email, this.password, this.log);
         await this.api.setup();
       }
 
@@ -282,7 +285,7 @@ export default class TPLink {
       this.log.debug('Checking protocol');
       const response = await this.api.sendRequest('component_nego', {}, false);
       if (response.data.error_code === 1003) {
-        this.log.debug(`Using KLAP protocol for ${this.ip}`);
+        this.log.debug(`Using KLAP protocol for ${this.device.ip}`);
         return Protocol.KLAP;
       }
     } catch (e: any) {
@@ -292,7 +295,7 @@ export default class TPLink {
       );
     }
 
-    this.log.debug(`Using legacy protocol for ${this.ip}`);
+    this.log.debug(`Using legacy protocol for ${this.device.ip}`);
     return Protocol.Legacy;
   }
 }

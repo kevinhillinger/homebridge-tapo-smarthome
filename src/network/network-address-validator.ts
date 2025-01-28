@@ -1,8 +1,8 @@
-import { NetworkDeviceAddress } from "../@types/NetworkDeviceAddress";
+import { NetworkAddressConfig } from "../@types/network-address-config";
 
 
 class NetworkAddressValidator {
-    static validate(address: NetworkDeviceAddress): boolean {
+    static validate(address: NetworkAddressConfig): boolean {
         if (address.type === 'IP') {
             return this.validateIP(address.value);
         } else if (address.type === 'MAC') {
@@ -22,4 +22,4 @@ class NetworkAddressValidator {
     }
 }
 
-export { NetworkAddressValidator, NetworkDeviceAddress };
+export { NetworkAddressValidator, NetworkAddressConfig as NetworkDeviceAddress };

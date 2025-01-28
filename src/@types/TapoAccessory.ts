@@ -5,13 +5,7 @@ import DeviceInfo from '../api/@types/DeviceInfo';
 import TPLink from '../api/TPLink';
 import Platform from '../platform';
 import Context from './Context';
-
-export enum AccessoryType {
-  LightBulb = 'LightBulb',
-  Unknown = 'Unknown',
-  Outlet = 'Outlet',
-  Hub = 'Hub'
-}
+import { TapoAccessoryType } from './TapoAccessoryType';
 
 export enum ChildType {
   Unknown = 'Unknown',
@@ -25,20 +19,25 @@ abstract class TapoAccessory {
   protected readonly model: string;
   protected readonly mac: string;
 
-  public static GetType(deviceInfo: DeviceInfo): AccessoryType {
+  /**
+   * Get the type of the device with the Tapo device info
+   * @param deviceInfo
+   * @returns 
+   */
+  public static getType(deviceInfo: DeviceInfo): TapoAccessoryType {
     if (deviceInfo?.type?.includes('BULB')) {
-      return AccessoryType.LightBulb;
+      return TapoAccessoryType.LightBulb;
     }
 
     if (deviceInfo?.type?.includes('PLUG')) {
-      return AccessoryType.Outlet;
+      return TapoAccessoryType.Outlet;
     }
 
     if (deviceInfo?.type?.includes('HUB')) {
-      return AccessoryType.Hub;
+      return TapoAccessoryType.Hub;
     }
 
-    return AccessoryType.Unknown;
+    return TapoAccessoryType.Unknown;
   }
 
   public static GetChildType(deviceInfo: ChildInfo): ChildType {

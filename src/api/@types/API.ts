@@ -3,6 +3,7 @@ import { Logger } from 'homebridge';
 import crypto from 'crypto';
 
 import TpLinkCipher from '../TpLinkCipher';
+import { TapoDevice } from '../../tapo/tapo-device';
 
 abstract class API {
   protected readonly terminalUUID: string;
@@ -13,7 +14,7 @@ abstract class API {
   protected readonly rawPassword: string;
 
   constructor(
-    protected readonly ip: string,
+    protected readonly device: TapoDevice,
     protected readonly email: string,
     protected readonly password: string,
     protected readonly log: Logger

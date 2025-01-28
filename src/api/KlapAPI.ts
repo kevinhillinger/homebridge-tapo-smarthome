@@ -6,6 +6,7 @@ import http from 'http';
 
 import KlapCipher from './KlapCipher';
 import API from './@types/API';
+import { TapoDevice } from '../tapo/tapo-device';
 
 export default class KlapAPI extends API {
   private static readonly TP_TEST_USER = 'test@tp-link.net';
@@ -16,12 +17,12 @@ export default class KlapAPI extends API {
   private session?: Session;
 
   constructor(
-    protected readonly ip: string,
+    protected readonly device: TapoDevice,
     protected readonly email: string,
     protected readonly password: string,
     protected readonly log: Logger
   ) {
-    super(ip, email, password, log);
+    super(device, email, password, log);
     this.lock = new AsyncLock();
   }
 
@@ -248,11 +249,11 @@ export default class KlapAPI extends API {
     cookie?: string,
     params?: Record<string, unknown>
   ) {
-    return axios.post(`http://${this.ip}/app${path}`, payload, {
+    return axios.post(`http://${this.device.ip}/app${path}`, payload, {
       responseType: responseType,
       params: params,
       headers: {
-        Host: this.ip,
+        Host: this.device.ip,
         Accept: '*/*',
         'Content-Type': 'application/octet-stream',
         ...(cookie && {
