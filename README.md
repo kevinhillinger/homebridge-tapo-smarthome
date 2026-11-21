@@ -34,7 +34,7 @@ For other device type just open a issue.
 
 ### Config
 
-You can add multiple devices bulbs with a single platform.
+Configure device addresses in `addresses`. With the account fields set, use `"addresses": []` to remove all cached Tapo accessories.
 
 ```json
 {
@@ -44,13 +44,10 @@ You can add multiple devices bulbs with a single platform.
       "name": "Tapo Smart Home",
       "email": "tplink-account-email",
       "password": "tplink-account-password",
-      "devices": [
+      "addresses": [
         {
-          "name": "Tapo device",
-          "address": {
-            "value": "24-2F-D1-9C-00-42 (the MAC address of the device)",
-            "type": "IP | MAC"
-          }
+          "value": "02:00:00:00:00:01",
+          "type": "MAC"
         }
       ]
     }

@@ -35,7 +35,6 @@ export default class Platform implements DynamicPlatformPlugin {
   public readonly Characteristic: typeof Characteristic;
 
   public readonly accessories: PlatformAccessory<Context | HubContext>[] = [];
-  public readonly loadedChildUUIDs: Record<string, true> = {};
   public readonly registeredDevices: TapoAccessory[] = [];
   public readonly hubs: HubAccessory[] = [];
 
@@ -61,9 +60,9 @@ export default class Platform implements DynamicPlatformPlugin {
     // to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
-      this.log.debug('Finished initializing platform:', this.config.name);
+      this.log.debug('Finished initializing platform:', this.config?.name);
 
-      this.discoverDevices();
+      return this.discoverDevices();
     });
   }
 
@@ -80,12 +79,28 @@ export default class Platform implements DynamicPlatformPlugin {
     try {
       const { email, password, addresses } = this.config ?? {};
       if (
-        !email ||
-        !password ||
-        !addresses ||
-        !Array.isArray(addresses) ||
-        addresses.length <= 0
+        typeof email !== 'string' || !email.trim() ||
+        typeof password !== 'string' || !password
       ) {
+        this.log.warn(
+          'Keeping cached Tapo accessories. Set the Tapo account email and password to enable discovery.'
+        );
+        return;
+      }
+
+      if (
+        !Array.isArray(addresses) ||
+        addresses.some((address) =>
+          typeof address?.value !== 'string' || !NetworkAddressValidator.validate(address)
+        )
+      ) {
+        this.log.warn(
+          'Keeping cached Tapo accessories. Set "addresses" to an array with a valid "type" (IP or MAC) and "value" for each device.'
+        );
+        return;
+      }
+
+      if (addresses.length === 0) {
         if (this.accessories.length > 0) {
           this.api.unregisterPlatformAccessories(
             PLUGIN_NAME,
@@ -97,35 +112,43 @@ export default class Platform implements DynamicPlatformPlugin {
         return;
       }
 
-      await Promise.all(
+      const configuredUUIDs = await Promise.all(
         addresses.map((address) => this.loadDevice(address, email, password))
       );
-
+      const inventoriedHubs = new Set<string>();
+      const discoveredChildUUIDs = new Set<string>();
       await Promise.all(
         this.hubs.map(async (hub) => {
           const devices = await hub.getChildDevices();
-          await Promise.all(
-            devices.map((device) => {
-              if (Object.keys(device || {}).length === 0) {
-                return Promise.resolve();
-              }
+          if (!Array.isArray(devices)) {
+            return;
+          }
 
-              this.loadedChildUUIDs[
-                this.api.hap.uuid.generate(device.device_id)
-              ] = true;
-              return this.loadChildDevice(device.device_id, device, hub);
-            })
+          const children = devices.filter((device): device is ChildInfo =>
+            typeof device?.device_id === 'string' && device.device_id.length > 0
           );
+          if (children.length === devices.length) {
+            inventoriedHubs.add(hub.UUID);
+          }
+          await Promise.all(children.map((device) => {
+            discoveredChildUUIDs.add(this.api.hap.uuid.generate(device.device_id));
+            return this.loadChildDevice(device.device_id, device, hub);
+          }));
         })
       );
 
-      this.checkOldDevices();
+      // A failed lookup may belong to an existing accessory, especially when configured by IP.
+      if (configuredUUIDs.every((uuid): uuid is string => uuid !== undefined)) {
+        this.checkOldDevices(new Set(configuredUUIDs), inventoriedHubs, discoveredChildUUIDs);
+      } else {
+        this.log.warn('Keeping cached Tapo accessories because some configured addresses could not be resolved.');
+      }
     } catch (err: any) {
       this.log.error('Failed to discover devices:', err.message);
     }
   }
 
-  private async loadDevice(address: NetworkAddressConfig, email: string, password: string) {
+  private async loadDevice(address: NetworkAddressConfig, email: string, password: string): Promise<string | undefined> {
     const networkDevice = await this.deviceLocator.find(address);
 
     if (!networkDevice) {
@@ -137,7 +160,7 @@ export default class Platform implements DynamicPlatformPlugin {
       this.deviceRetry[uuid] = this.TIMEOUT_TRIES;
     } else if (this.deviceRetry[uuid] <= 0) {
       this.log.info('Retry timeout:', networkDevice.ip, '|', networkDevice.mac);
-      return;
+      return uuid;
     } else {
       this.log.info('Retry to connect in 10s', ':', networkDevice.ip);
       await delay(10 * 1000);
@@ -191,11 +214,11 @@ export default class Platform implements DynamicPlatformPlugin {
             TapoAccessory.getType(deviceInfo),
             deviceInfo?.type
           );
-          return;
+          return uuid;
         }
 
         this.registeredDevices.push(tapoAccessory);
-        return;
+        return uuid;
       }
 
       this.log.info('Adding new accessory:', deviceName);
@@ -217,14 +240,13 @@ export default class Platform implements DynamicPlatformPlugin {
           TapoAccessory.getType(deviceInfo),
           deviceInfo?.type
         );
-        return;
+        return uuid;
       }
 
       this.registeredDevices.push(registeredAccessory);
 
-      return this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
-        accessory
-      ]);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      return uuid;
     } catch (err: any) {
       this.log.error('Failed to get info about:', address, '|', err.message);
       this.deviceRetry[uuid] -= 1;
@@ -333,34 +355,24 @@ export default class Platform implements DynamicPlatformPlugin {
     }
   }
 
-  private checkOldDevices() {
-    const addressesByUUID: Record<string, string> = (
-      (this.config?.addresses) || []
-    ).reduce(
-      (acc, address) => ({
-        ...acc,
-        [this.api.hap.uuid.generate(address.value)]: address.value
-      }),
-      {}
-    );
-
-    this.accessories.map((accessory) => {
-      const deleteDevice =
-        (!accessory.context.child &&
-          !addressesByUUID[accessory.UUID.toString()]) ||
-        (accessory.context.child &&
-          !addressesByUUID[accessory.context.parent]) ||
-        (accessory.context.child &&
-          addressesByUUID[accessory.context.parent] &&
-          !this.loadedChildUUIDs[accessory.UUID.toString()]);
+  private checkOldDevices(
+    configuredUUIDs: ReadonlySet<string>,
+    inventoriedHubs: ReadonlySet<string>,
+    discoveredChildUUIDs: ReadonlySet<string>
+  ) {
+    for (const accessory of this.accessories) {
+      const uuid = accessory.UUID.toString();
+      const { context } = accessory;
+      const deleteDevice = context.child
+        ? !configuredUUIDs.has(context.parent) ||
+          (inventoriedHubs.has(context.parent) && !discoveredChildUUIDs.has(uuid))
+        : !configuredUUIDs.has(uuid);
 
       if (deleteDevice) {
         this.log.info('Remove cached accessory:', accessory.displayName);
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
-          accessory
-        ]);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
-    });
+    }
   }
 
   private readonly accessoryClasses = {
