@@ -61,7 +61,7 @@ export default class Platform implements DynamicPlatformPlugin {
     // to start discovery of new accessories.
     this.api.on('didFinishLaunching', () => {
       this.log.debug('Executed didFinishLaunching callback');
-      this.log.debug('Finished initializing platform:', this.config.name);
+      this.log.debug('Finished initializing platform:', this.config?.name);
 
       this.discoverDevices();
     });
@@ -80,12 +80,28 @@ export default class Platform implements DynamicPlatformPlugin {
     try {
       const { email, password, addresses } = this.config ?? {};
       if (
-        !email ||
-        !password ||
-        !addresses ||
-        !Array.isArray(addresses) ||
-        addresses.length <= 0
+        typeof email !== 'string' || !email.trim() ||
+        typeof password !== 'string' || !password
       ) {
+        this.log.warn(
+          'Keeping cached Tapo accessories. Set the Tapo account email and password to enable discovery.'
+        );
+        return;
+      }
+
+      if (
+        !Array.isArray(addresses) ||
+        addresses.some((address) =>
+          typeof address?.value !== 'string' || !NetworkAddressValidator.validate(address)
+        )
+      ) {
+        this.log.warn(
+          'Keeping cached Tapo accessories. Set "addresses" to an array with a valid "type" (IP or MAC) and "value" for each device.'
+        );
+        return;
+      }
+
+      if (addresses.length === 0) {
         if (this.accessories.length > 0) {
           this.api.unregisterPlatformAccessories(
             PLUGIN_NAME,
